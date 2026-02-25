@@ -1,365 +1,416 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Santuario Therian | Descubre tu Alma</title>
-    <!-- Tailwind CSS para el diseño -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React y ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel para compilar JSX en el navegador -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- FontAwesome para los iconos -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+import React, { useState, useEffect, useRef } from 'react';
+import { PawPrint, Star, Compass, MessageCircle, Send, Download, BookOpen, Share2, User, LogOut, Sparkles, ArrowRight } from 'lucide-react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+
+// --- Configuración de Firebase ---
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'santuario-app';
+
+// --- Base de Datos de Teriotipos (Imágenes Profesionales, sin Emojis) ---
+const theriotypesDB = {
+  lobo_artico: { name: 'Lobo Ártico', image: 'https://images.unsplash.com/photo-1580227187123-56aa76d49938?w=500&q=80', desc: 'Resistente y ferozmente leal. Tu alma pertenece a las nieves eternas.', stats: { agilidad: 80, fuerza: 85, misticismo: 70 }, color: 'from-blue-100 to-blue-300', text: 'text-blue-900', border: 'border-blue-500' },
+  lobo_negro: { name: 'Lobo Negro', image: 'https://images.unsplash.com/photo-1605051923053-f72535099e4b?w=500&q=80', desc: 'Misterioso, nocturno y profundamente intuitivo. Te guía la luna.', stats: { agilidad: 75, fuerza: 90, misticismo: 95 }, color: 'from-slate-700 to-slate-900', text: 'text-slate-100', border: 'border-slate-500' },
+  lobo_gris: { name: 'Lobo Gris', image: 'https://images.unsplash.com/photo-1590513904975-f9380da1262d?w=500&q=80', desc: 'El alma de la manada. Eres protector, comunicativo y salvaje.', stats: { agilidad: 80, fuerza: 80, misticismo: 60 }, color: 'from-stone-300 to-stone-500', text: 'text-stone-900', border: 'border-stone-600' },
+  zorro_rojo: { name: 'Zorro Rojo', image: 'https://images.unsplash.com/photo-1516934824040-9759eb54bc7b?w=500&q=80', desc: 'Astuto, juguetón y adaptable. Encuentras magia en lugares ocultos.', stats: { agilidad: 95, fuerza: 40, misticismo: 85 }, color: 'from-orange-300 to-red-400', text: 'text-red-950', border: 'border-red-600' },
+  gato_callejero: { name: 'Gato Urbano', image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=500&q=80', desc: 'Independiente, territorial y superviviente nato.', stats: { agilidad: 90, fuerza: 45, misticismo: 50 }, color: 'from-gray-300 to-gray-500', text: 'text-gray-900', border: 'border-gray-600' },
+  pantera: { name: 'Pantera Negra', image: 'https://images.unsplash.com/photo-1616035252875-103328ce7dcc?w=500&q=80', desc: 'Sigiloso, poderoso e independiente. Te mueves en las sombras.', stats: { agilidad: 90, fuerza: 85, misticismo: 80 }, color: 'from-violet-900 to-black', text: 'text-violet-100', border: 'border-violet-500' },
+  tiburon_blanco: { name: 'Tiburón Blanco', image: 'https://images.unsplash.com/photo-1560275619-4662e36fa65c?w=500&q=80', desc: 'Poderoso, incomprendido y en constante movimiento.', stats: { agilidad: 85, fuerza: 95, misticismo: 40 }, color: 'from-cyan-300 to-blue-500', text: 'text-cyan-950', border: 'border-cyan-600' },
+  cuervo: { name: 'Cuervo', image: 'https://images.unsplash.com/photo-1506540306786-81534431e7f6?w=500&q=80', desc: 'Sumamente inteligente, coleccionista y con conexión al misticismo.', stats: { agilidad: 85, fuerza: 30, misticismo: 100 }, color: 'from-fuchsia-900 to-slate-900', text: 'text-fuchsia-100', border: 'border-fuchsia-500' }
+};
+
+// --- Utils Astrológicos ---
+const getAstrologyData = (dateString) => {
+  if (!dateString) return { zodiac: '?', chinese: '?', moon: '?', element: '?' };
+  const d = new Date(dateString); 
+  const day = d.getDate(); const month = d.getMonth() + 1; const year = d.getFullYear();
+  
+  let z = '', el = '';
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) { z = 'Aries'; el = 'Fuego'; }
+  else if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) { z = 'Tauro'; el = 'Tierra'; }
+  else if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) { z = 'Géminis'; el = 'Aire'; }
+  else if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) { z = 'Cáncer'; el = 'Agua'; }
+  else if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) { z = 'Leo'; el = 'Fuego'; }
+  else if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) { z = 'Virgo'; el = 'Tierra'; }
+  else if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) { z = 'Libra'; el = 'Aire'; }
+  else if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) { z = 'Escorpio'; el = 'Agua'; }
+  else if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) { z = 'Sagitario'; el = 'Fuego'; }
+  else if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) { z = 'Capricornio'; el = 'Tierra'; }
+  else if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) { z = 'Acuario'; el = 'Aire'; }
+  else { z = 'Piscis'; el = 'Agua'; }
+
+  const animals = ['Mono', 'Gallo', 'Perro', 'Cerdo', 'Rata', 'Buey', 'Tigre', 'Conejo', 'Dragón', 'Serpiente', 'Caballo', 'Cabra'];
+  const c = animals[year % 12];
+  
+  const phase = ((d.getTime() / 1000 - 947182440) % 2551443) / 2551443;
+  let moonPhase = phase < 0.03 || phase > 0.97 ? 'Luna Nueva' : phase < 0.22 ? 'Cuarto Creciente' : phase < 0.28 ? 'Media Luna' : phase < 0.47 ? 'Luna Gibada' : phase < 0.53 ? 'Luna Llena' : phase < 0.72 ? 'Gibada Menguante' : phase < 0.78 ? 'Cuarto Menguante' : 'Luna Menguante';
+
+  return { zodiac: z, chinese: c, moon: moonPhase, element: el };
+};
+
+export default function App() {
+  const [view, setView] = useState('home'); 
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authUser, setAuthUser] = useState(null);
+
+  // --- Autenticación ---
+  useEffect(() => {
+    let unsubscribe;
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+        unsubscribe = onAuthStateChanged(auth, (u) => {
+          setAuthUser(u);
+        });
+      } catch (err) { console.error("Error Auth:", err); }
+    };
+    initAuth();
+    return () => { if(unsubscribe) unsubscribe(); };
+  }, []);
+
+  // --- Obtener Datos de Firebase ---
+  useEffect(() => {
+    if (!authUser) return;
+    const loadProfile = async () => {
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'users', authUser.uid, 'data', 'profile');
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          setCurrentUser(snap.data());
+        }
+      } catch (err) { console.error("Error al cargar perfil:", err); }
+    };
+    loadProfile();
+  }, [authUser]);
+
+  // --- Guardar en Firebase ---
+  const saveUserToCloud = async (userData) => {
+    setCurrentUser(userData);
+    if (authUser) {
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'users', authUser.uid, 'data', 'profile');
+        await setDoc(docRef, userData);
+      } catch (err) { console.error("Error al guardar:", err); }
+    }
+  };
+
+  const cardStyle = "bg-white border-4 border-gray-900 rounded-2xl shadow-[6px_6px_0px_0px_rgba(17,24,39,1)] p-6 md:p-8 transition-all";
+  const btnStyle = "font-black text-lg border-4 border-gray-900 rounded-xl shadow-[4px_4px_0px_0px_rgba(17,24,39,1)] active:shadow-none active:translate-y-1 active:translate-x-1 transition-all px-6 py-3 flex items-center justify-center gap-2";
+
+  return (
+    <div className="min-h-screen bg-[#f0f4f8] text-gray-900 font-sans selection:bg-purple-300 pb-12 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
+      <nav className="border-b-4 border-gray-900 bg-white px-4 md:px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center gap-3 cursor-pointer hover:scale-105 transition-transform" onClick={() => setView(currentUser ? 'dashboard' : 'home')}>
+          <div className="bg-purple-500 p-2 rounded-xl border-2 border-gray-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-white">
+            <Compass size={28} strokeWidth={2.5} />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight hidden sm:block">Santuario Therian</h1>
+        </div>
+        <div className="flex items-center gap-2 md:gap-4">
+          {currentUser ? (
+            <>
+              <button onClick={() => setView('chat')} className="flex items-center gap-2 font-bold text-purple-700 bg-purple-100 px-4 py-2 rounded-xl border-2 border-purple-900 hover:bg-purple-200 shadow-[2px_2px_0px_0px_rgba(88,28,135,1)]">
+                <MessageCircle size={20}/> Oráculo
+              </button>
+              <button onClick={() => {setCurrentUser(null); setView('home');}} className="font-bold text-red-600 hover:bg-red-50 p-2 rounded-xl border-2 border-transparent">
+                <LogOut size={24} />
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setView('auth')} className="bg-purple-400 text-white font-bold border-2 border-gray-900 rounded-xl px-6 py-2 shadow-[2px_2px_0px_0px_rgba(17,24,39,1)]">
+              Entrar
+            </button>
+          )}
+        </div>
+      </nav>
+
+      <main className="max-w-6xl mx-auto p-4 md:p-8 mt-4">
+        {view === 'home' && <HomeView setView={setView} btnStyle={btnStyle} />}
+        {view === 'auth' && <AuthView setCurrentUser={saveUserToCloud} currentUser={currentUser} setView={setView} cardStyle={cardStyle} btnStyle={btnStyle} />}
+        {view === 'dashboard' && <DashboardView user={currentUser} setView={setView} saveUser={saveUserToCloud} cardStyle={cardStyle} btnStyle={btnStyle} astro={getAstrologyData(currentUser?.dob)} />}
+        {view === 'quiz' && <QuizView onFinish={(res) => { saveUserToCloud({ ...currentUser, theriotype: theriotypesDB[res] }); setView('dashboard'); }} cardStyle={cardStyle} btnStyle={btnStyle} />}
+        {view === 'chat' && <ChatbotView user={currentUser} cardStyle={cardStyle} btnStyle={btnStyle} />}
+      </main>
+    </div>
+  );
+}
+
+// --- Vistas Secundarias ---
+
+function HomeView({ setView, btnStyle }) {
+  return (
+    <div className="flex flex-col items-center text-center space-y-12 animate-fade-in py-12">
+      <div className="space-y-6 max-w-4xl">
+        <div className="inline-block bg-emerald-100 text-emerald-900 font-black px-6 py-2 rounded-full border-4 border-emerald-900 mb-4 shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
+          ☁️ Guardado en la Nube Activo
+        </div>
+        <h2 className="text-5xl md:text-8xl font-black leading-none text-gray-900 tracking-tight">
+          Descubre tu <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-500">Alma Verdadera.</span>
+        </h2>
+        <p className="text-xl md:text-2xl text-gray-600 font-medium max-w-2xl mx-auto">
+          Genera tu carta profesional, guárdala en tu santuario personal para siempre y compártela con la manada.
+        </p>
+      </div>
+      <button onClick={() => setView('auth')} className={`${btnStyle} bg-purple-400 text-white text-2xl px-12 py-6`}>
+        Iniciar mi Despertar <ArrowRight strokeWidth={4} size={28}/>
+      </button>
+    </div>
+  );
+}
+
+function AuthView({ setCurrentUser, currentUser, setView, cardStyle, btnStyle }) {
+  const [username, setUsername] = useState('');
+  const [dob, setDob] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!username || !dob) return;
+    const userData = { username, dob, joined: new Date().toLocaleDateString(), theriotype: null, journal: [] };
+    setCurrentUser(userData);
+    setView('dashboard');
+  };
+
+  return (
+    <div className="max-w-md mx-auto animate-fade-in mt-12">
+      <div className={cardStyle}>
+        <div className="flex justify-center mb-6"><div className="bg-purple-200 p-4 rounded-full border-4 border-gray-900"><User size={40}/></div></div>
+        <h2 className="text-3xl font-black text-center mb-6">Crea tu Refugio</h2>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div><label className="font-black text-gray-700">Tu Apodo Therian</label><input type="text" required className="w-full mt-2 p-3 border-4 border-gray-900 rounded-xl" value={username} onChange={e=>setUsername(e.target.value)}/></div>
+          <div><label className="font-black text-gray-700">Fecha de Nacimiento</label><input type="date" required className="w-full mt-2 p-3 border-4 border-gray-900 rounded-xl" value={dob} onChange={e=>setDob(e.target.value)}/></div>
+          <button type="submit" className={`${btnStyle} bg-purple-400 text-white w-full mt-6`}>Entrar a la Nube</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DashboardView({ user, setView, saveUser, cardStyle, btnStyle, astro }) {
+  const [journalText, setJournalText] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
+  
+  const addJournal = () => {
+    if(!journalText.trim()) return;
+    const newEntry = { date: new Date().toLocaleDateString(), text: journalText };
+    saveUser({ ...user, journal: [newEntry, ...(user.journal || [])] });
+    setJournalText('');
+  };
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  const shareToSocials = (platform) => {
+    const text = `¡Soy un ${user.theriotype.name}! Mi elemento es ${astro.element}. Descubre tu Theriotipo en Santuario Therian:`;
+    const url = 'https://santuariotherian.vercel.app'; 
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
-        body { font-family: 'Nunito', sans-serif; }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        .animate-bounce-in { animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.05); } 100% { transform: scale(1); } }
-    </style>
-</head>
-<body class="bg-[#f0f4f8] text-gray-900 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
-    <div id="root"></div>
+    if (platform === 'whatsapp') {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+    } else if (platform === 'twitter') {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+    }
+  };
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+  const shareNative = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Mi Theriotipo',
+          text: `¡Soy un ${user.theriotype.name}! Descubre el tuyo:`,
+          url: 'https://santuariotherian.vercel.app',
+        });
+      } catch (err) {
+        console.error("Error sharing", err);
+      }
+    } else {
+      showToast("La función de compartir nativa no está disponible en este navegador.");
+    }
+  };
 
-        // --- Base de Datos de Teriotipos ---
-        const theriotypesDB = {
-            lobo_artico: { name: 'Lobo Ártico', emoji: '🐺❄️', imgTheme: 'lobo+artico', desc: 'Resistente y ferozmente leal. Tu alma pertenece a las nieves eternas.', stats: { agilidad: 80, fuerza: 85, misticismo: 70 }, color: 'from-blue-100 to-blue-300', text: 'text-blue-900', border: 'border-blue-500' },
-            lobo_negro: { name: 'Lobo Negro', emoji: '🐺🌑', imgTheme: 'lobo+negro', desc: 'Misterioso, nocturno y profundamente intuitivo. Te guía la luna.', stats: { agilidad: 75, fuerza: 90, misticismo: 95 }, color: 'from-slate-700 to-slate-900', text: 'text-slate-100', border: 'border-slate-500' },
-            lobo_gris: { name: 'Lobo Gris', emoji: '🐺🌲', imgTheme: 'lobo+gris', desc: 'El alma de la manada. Eres protector, comunicativo y salvaje.', stats: { agilidad: 80, fuerza: 80, misticismo: 60 }, color: 'from-stone-300 to-stone-500', text: 'text-stone-900', border: 'border-stone-600' },
-            zorro_rojo: { name: 'Zorro Rojo', emoji: '🦊🍂', imgTheme: 'zorro+rojo', desc: 'Astuto, juguetón y adaptable. Encuentras magia en lugares ocultos.', stats: { agilidad: 95, fuerza: 40, misticismo: 85 }, color: 'from-orange-300 to-red-400', text: 'text-red-950', border: 'border-red-600' },
-            gato_callejero: { name: 'Gato Urbano', emoji: '🐈🏙️', imgTheme: 'gato+callejero', desc: 'Independiente, territorial y superviviente nato.', stats: { agilidad: 90, fuerza: 45, misticismo: 50 }, color: 'from-gray-300 to-gray-500', text: 'text-gray-900', border: 'border-gray-600' },
-            pantera: { name: 'Pantera Negra', emoji: '🐆🌑', imgTheme: 'pantera+negra', desc: 'Sigiloso, poderoso e independiente. Te mueves en las sombras.', stats: { agilidad: 90, fuerza: 85, misticismo: 80 }, color: 'from-violet-900 to-black', text: 'text-violet-100', border: 'border-violet-500' },
-            tiburon_blanco: { name: 'Tiburón Blanco', emoji: '🦈🌊', imgTheme: 'tiburon+blanco', desc: 'Poderoso, incomprendido y en constante movimiento.', stats: { agilidad: 85, fuerza: 95, misticismo: 40 }, color: 'from-cyan-300 to-blue-500', text: 'text-cyan-950', border: 'border-cyan-600' },
-            cuervo: { name: 'Cuervo', emoji: '🐦‍⬛🌑', imgTheme: 'cuervo', desc: 'Sumamente inteligente, coleccionista y con conexión al misticismo.', stats: { agilidad: 85, fuerza: 30, misticismo: 100 }, color: 'from-fuchsia-900 to-slate-900', text: 'text-fuchsia-100', border: 'border-fuchsia-500' }
-        };
+  return (
+    <div className="space-y-6 animate-fade-in relative">
+      {/* Notificación flotante / Toast */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(17,24,39,1)] border-2 border-gray-700 z-50 animate-fade-in font-bold">
+          {toastMsg}
+        </div>
+      )}
 
-        const getAstrologyData = (dateString) => {
-            if (!dateString) return { zodiac: '?', zodiacEmoji: '❓', chinese: '?', chineseEmoji: '❓', moon: '?', element: '?' };
-            const d = new Date(dateString); const day = d.getDate(); const month = d.getMonth() + 1; const year = d.getFullYear();
-            let z = '', ze = '', el = '';
-            if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) { z = 'Aries'; ze = '♈'; el = 'Fuego 🔥'; }
-            else if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) { z = 'Tauro'; ze = '♉'; el = 'Tierra 🌿'; }
-            else if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) { z = 'Géminis'; ze = '♊'; el = 'Aire 💨'; }
-            else if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) { z = 'Cáncer'; ze = '♋'; el = 'Agua 💧'; }
-            else if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) { z = 'Leo'; ze = '♌'; el = 'Fuego 🔥'; }
-            else if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) { z = 'Virgo'; ze = '♍'; el = 'Tierra 🌿'; }
-            else if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) { z = 'Libra'; ze = '♎'; el = 'Aire 💨'; }
-            else if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) { z = 'Escorpio'; ze = '♏'; el = 'Agua 💧'; }
-            else if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) { z = 'Sagitario'; ze = '♐'; el = 'Fuego 🔥'; }
-            else if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) { z = 'Capricornio'; ze = '♑'; el = 'Tierra 🌿'; }
-            else if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) { z = 'Acuario'; ze = '♒'; el = 'Aire 💨'; }
-            else { z = 'Piscis'; ze = '♓'; el = 'Agua 💧'; }
+      <header className="bg-white border-4 border-gray-900 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <div><h2 className="text-3xl md:text-5xl font-black text-gray-900 capitalize">Refugio de {user.username}</h2><p className="text-emerald-600 font-bold mt-2">☁️ Guardado seguro en la nube</p></div>
+        <button onClick={()=>setView('chat')} className={`${btnStyle} bg-purple-200 text-purple-900 mt-4 md:mt-0`}><MessageCircle/> Hablar con Oráculo</button>
+      </header>
 
-            const animals = ['Mono', 'Gallo', 'Perro', 'Cerdo', 'Rata', 'Buey', 'Tigre', 'Conejo', 'Dragón', 'Serpiente', 'Caballo', 'Cabra'];
-            const emojis = ['🐒', '🐓', '🐕', '🐖', '🐀', '🐂', '🐅', '🐇', '🐉', '🐍', '🐎', '🐐'];
-            const c = animals[year % 12]; const ce = emojis[year % 12];
-            const phase = ((d.getTime() / 1000 - 947182440) % 2551443) / 2551443;
-            let moonPhase = phase < 0.03 || phase > 0.97 ? 'Luna Nueva 🌑' : phase < 0.22 ? 'Cuarto Creciente 🌒' : phase < 0.28 ? 'Media Luna 🌓' : phase < 0.47 ? 'Luna Gibada 🌔' : phase < 0.53 ? 'Luna Llena 🌕' : phase < 0.72 ? 'Gibada Menguante 🌖' : phase < 0.78 ? 'Cuarto Menguante 🌗' : 'Luna Menguante 🌘';
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* PANEL IZQUIERDO */}
+        <div className="space-y-6">
+          <div className={`${cardStyle} bg-slate-800 text-white border-slate-900`}>
+            <h3 className="text-xl font-black mb-6 border-b-2 border-slate-600 pb-2 flex items-center gap-2"><Sparkles/> Stats Cósmicos</h3>
+            <div className="space-y-4 font-medium">
+              <div className="flex justify-between items-center bg-slate-700 p-3 rounded-lg border-2 border-slate-900"><span>Zodiaco:</span> <span className="font-black text-xl">{astro.zodiac}</span></div>
+              <div className="flex justify-between items-center bg-slate-700 p-3 rounded-lg border-2 border-slate-900"><span>Año Chino:</span> <span className="font-black text-xl">{astro.chinese}</span></div>
+              <div className="flex justify-between items-center bg-slate-700 p-3 rounded-lg border-2 border-slate-900"><span>Elemento:</span> <span className="font-black text-xl">{astro.element}</span></div>
+            </div>
+          </div>
+          <div className={`${cardStyle} bg-[#fffbeb]`}>
+            <h3 className="text-xl font-black mb-4 flex items-center gap-2"><BookOpen/> Diario de Shifts</h3>
+            <textarea className="w-full p-3 border-4 border-gray-900 rounded-xl mb-3 h-24 font-medium resize-none" placeholder="Registra tus experiencias aquí..." value={journalText} onChange={e=>setJournalText(e.target.value)}></textarea>
+            <button onClick={addJournal} className={`${btnStyle} bg-amber-300 w-full py-2 text-sm`}>Guardar</button>
+          </div>
+        </div>
 
-            return { zodiac: z, zodiacEmoji: ze, chinese: c, chineseEmoji: ce, moon: moonPhase, element: el };
-        };
-
-        function App() {
-            const [view, setView] = useState('home'); 
-            const [currentUser, setCurrentUser] = useState(null);
-            const [usersDB, setUsersDB] = useState([]);
-
-            useEffect(() => {
-                const savedUsers = localStorage.getItem('santuario_web_db');
-                if (savedUsers) setUsersDB(JSON.parse(savedUsers));
-            }, []);
-
-            const saveUserLocal = (userObj) => {
-                const updatedDB = usersDB.filter(u => u.username !== userObj.username);
-                updatedDB.push(userObj);
-                setUsersDB(updatedDB);
-                localStorage.setItem('santuario_web_db', JSON.stringify(updatedDB));
-                setCurrentUser(userObj);
-            };
-
-            const cardStyle = "bg-white border-4 border-gray-900 rounded-2xl shadow-[6px_6px_0px_0px_rgba(17,24,39,1)] p-6 md:p-8 transition-all";
-            const btnStyle = "font-black text-lg border-4 border-gray-900 rounded-xl shadow-[4px_4px_0px_0px_rgba(17,24,39,1)] active:shadow-none active:translate-y-1 active:translate-x-1 transition-all px-6 py-3 flex items-center justify-center gap-2 cursor-pointer";
-
-            return (
-                <div className="min-h-screen pb-12">
-                    <nav className="border-b-4 border-gray-900 bg-white px-4 md:px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-                        <div className="flex items-center gap-3 cursor-pointer hover:scale-105 transition-transform" onClick={() => setView(currentUser ? 'dashboard' : 'home')}>
-                            <div className="bg-purple-500 p-2 rounded-xl border-2 border-gray-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-white">
-                                <i className="fas fa-compass text-2xl"></i>
-                            </div>
-                            <h1 className="text-2xl font-black tracking-tight hidden sm:block">Santuario Therian</h1>
-                        </div>
-                        <div className="flex items-center gap-2 md:gap-4">
-                            {currentUser ? (
-                                <React.Fragment>
-                                    <button onClick={() => setView('chat')} className="flex items-center gap-2 font-bold text-purple-700 bg-purple-100 px-4 py-2 rounded-xl border-2 border-purple-900 hover:bg-purple-200 shadow-[2px_2px_0px_0px_rgba(88,28,135,1)]">
-                                        <i className="fas fa-comment-dots"></i> <span className="hidden sm:inline">Oráculo</span>
-                                    </button>
-                                    <button onClick={() => {setCurrentUser(null); setView('home');}} className="font-bold text-red-600 hover:bg-red-50 p-2 rounded-xl border-2 border-transparent">
-                                        <i className="fas fa-sign-out-alt text-xl"></i>
-                                    </button>
-                                </React.Fragment>
-                            ) : (
-                                <button onClick={() => setView('auth')} className="bg-purple-400 text-white font-bold border-2 border-gray-900 rounded-xl px-6 py-2 shadow-[2px_2px_0px_0px_rgba(17,24,39,1)] hover:bg-purple-500">
-                                    Entrar / Registro
-                                </button>
-                            )}
-                        </div>
-                    </nav>
-
-                    <main className="max-w-6xl mx-auto p-4 md:p-8 mt-4">
-                        {view === 'home' && <HomeView setView={setView} btnStyle={btnStyle} />}
-                        {view === 'auth' && <AuthView setCurrentUser={saveUserLocal} usersDB={usersDB} setView={setView} cardStyle={cardStyle} btnStyle={btnStyle} />}
-                        {view === 'dashboard' && <DashboardView user={currentUser} setView={setView} saveUser={saveUserLocal} cardStyle={cardStyle} btnStyle={btnStyle} astro={getAstrologyData(currentUser?.dob)} />}
-                        {view === 'quiz' && <QuizView onFinish={(res) => { saveUserLocal({ ...currentUser, theriotype: theriotypesDB[res] }); setView('dashboard'); }} cardStyle={cardStyle} btnStyle={btnStyle} />}
-                        {view === 'chat' && <ChatbotView user={currentUser} cardStyle={cardStyle} btnStyle={btnStyle} />}
-                    </main>
+        {/* CARTA TCG */}
+        <div className={`lg:col-span-2 ${cardStyle} bg-white flex flex-col items-center`}>
+          <h3 className="text-3xl font-black mb-6 w-full text-left">Tu Carta de Identidad</h3>
+          {user.theriotype ? (
+            <div className="w-full max-w-md animate-bounce-in">
+              <div id="certificate" className={`aspect-[3/4] rounded-3xl border-8 ${user.theriotype.border} bg-gradient-to-br ${user.theriotype.color} p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col justify-between`}>
+                <div className={`flex justify-between items-start border-b-4 ${user.theriotype.border} pb-4 mb-4 relative z-10`}>
+                  <div><h4 className={`text-3xl md:text-4xl font-black ${user.theriotype.text}`}>{user.theriotype.name}</h4><p className={`text-sm font-bold uppercase tracking-widest ${user.theriotype.text} opacity-80`}>Therian Class</p></div>
+                  <div className="bg-white p-2 rounded-full border-4 border-inherit"><Star className="text-gray-900" size={24} /></div>
                 </div>
-            );
-        }
-
-        // --- Vistas Secundarias ---
-
-        function HomeView({ setView, btnStyle }) {
-            return (
-                <div className="flex flex-col items-center text-center space-y-12 animate-fade-in py-12">
-                    <div className="space-y-6 max-w-4xl">
-                        <div className="inline-block bg-purple-100 text-purple-900 font-black px-6 py-2 rounded-full border-4 border-purple-900 mb-4 shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
-                            ✨ IA y Cartas Holográficas
-                        </div>
-                        <h2 className="text-5xl md:text-8xl font-black leading-none text-gray-900 tracking-tight">
-                            Descubre tu <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-500">Alma Verdadera.</span>
-                        </h2>
-                        <p className="text-xl md:text-2xl text-gray-600 font-medium max-w-2xl mx-auto">
-                            Genera tu carta profesional, descubre tus stats cósmicos y habla con nuestro Oráculo Therian dotado de Inteligencia.
-                        </p>
-                    </div>
-                    <button onClick={() => setView('auth')} className={`${btnStyle} bg-purple-400 text-white text-2xl px-12 py-6`}>
-                        Iniciar mi Despertar <i className="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-            );
-        }
-
-        function AuthView({ setCurrentUser, usersDB, setView, cardStyle, btnStyle }) {
-            const [isLogin, setIsLogin] = useState(true);
-            const [username, setUsername] = useState('');
-            const [password, setPassword] = useState('');
-            const [dob, setDob] = useState('');
-            const [error, setError] = useState('');
-
-            const handleSubmit = (e) => {
-                e.preventDefault(); setError('');
-                if (isLogin) {
-                    const user = usersDB.find(u => u.username === username && u.password === password);
-                    if (user) { setCurrentUser(user); setView('dashboard'); }
-                    else setError('Usuario o contraseña incorrectos.');
-                } else {
-                    if (usersDB.some(u => u.username === username)) return setError('El usuario ya existe.');
-                    if (!dob) return setError('La fecha es necesaria para tu carta astral.');
-                    const newUser = { username, password, dob, joined: new Date().toLocaleDateString(), theriotype: null, journal: [] };
-                    setCurrentUser(newUser); setView('dashboard');
-                }
-            };
-
-            return (
-                <div className="max-w-md mx-auto animate-fade-in mt-12">
-                    <div className={cardStyle}>
-                        <div className="flex justify-center mb-6"><div className="bg-purple-200 p-4 rounded-full border-4 border-gray-900"><i className="fas fa-user text-3xl"></i></div></div>
-                        <div className="flex gap-4 mb-8">
-                            <button onClick={() => setIsLogin(true)} className={`flex-1 pb-2 font-black text-xl border-b-4 ${isLogin ? 'border-gray-900 text-gray-900' : 'border-gray-200 text-gray-400'}`}>Acceso</button>
-                            <button onClick={() => setIsLogin(false)} className={`flex-1 pb-2 font-black text-xl border-b-4 ${!isLogin ? 'border-gray-900 text-gray-900' : 'border-gray-200 text-gray-400'}`}>Nuevo</button>
-                        </div>
-                        {error && <div className="bg-red-100 text-red-800 p-3 rounded-xl border-2 border-red-900 font-bold mb-4">{error}</div>}
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div><label className="font-black text-gray-700">Tu Apodo</label><input type="text" required className="w-full mt-2 p-3 border-4 border-gray-900 rounded-xl" value={username} onChange={e=>setUsername(e.target.value.toLowerCase())}/></div>
-                            <div><label className="font-black text-gray-700">Contraseña Segura</label><input type="password" required className="w-full mt-2 p-3 border-4 border-gray-900 rounded-xl" value={password} onChange={e=>setPassword(e.target.value)}/></div>
-                            {!isLogin && <div><label className="font-black text-gray-700">Fecha de Nacimiento</label><input type="date" required className="w-full mt-2 p-3 border-4 border-gray-900 rounded-xl" value={dob} onChange={e=>setDob(e.target.value)}/></div>}
-                            <button type="submit" className={`${btnStyle} bg-purple-400 text-white w-full mt-6`}>{isLogin ? 'Despertar' : 'Crear mi Alma'}</button>
-                        </form>
-                    </div>
-                </div>
-            );
-        }
-
-        function DashboardView({ user, setView, saveUser, cardStyle, btnStyle, astro }) {
-            const [journalText, setJournalText] = useState('');
-            
-            const addJournal = () => {
-                if(!journalText.trim()) return;
-                const newEntry = { date: new Date().toLocaleDateString(), text: journalText };
-                saveUser({ ...user, journal: [newEntry, ...(user.journal || [])] });
-                setJournalText('');
-            };
-
-            const shareToSocials = (platform) => {
-                const text = `¡Soy un ${user.theriotype.name}! Mi elemento es ${astro.element}. Descubre tu Theriotipo en Santuario Therian:`;
-                const url = window.location.href; 
-                if (platform === 'whatsapp') window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
-                else if (platform === 'twitter') window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
-            };
-
-            return (
-                <div className="space-y-6 animate-fade-in">
-                    <header className="bg-white border-4 border-gray-900 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-                        <div><h2 className="text-3xl md:text-5xl font-black text-gray-900 capitalize">Refugio de {user.username}</h2></div>
-                        <button onClick={()=>setView('chat')} className={`${btnStyle} bg-purple-200 text-purple-900 mt-4 md:mt-0`}><i className="fas fa-comment-dots"></i> Hablar con Oráculo</button>
-                    </header>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="space-y-6">
-                            <div className={`${cardStyle} bg-slate-800 text-white border-slate-900`}>
-                                <h3 className="text-xl font-black mb-6 border-b-2 border-slate-600 pb-2 flex items-center gap-2"><i className="fas fa-wand-magic-sparkles text-amber-300"></i> Stats Cósmicos</h3>
-                                <div className="space-y-4 font-medium">
-                                    <div className="flex justify-between items-center bg-slate-700 p-3 rounded-lg border-2 border-slate-900"><span>Zodiaco:</span> <span className="font-black text-xl">{astro.zodiacEmoji} {astro.zodiac}</span></div>
-                                    <div className="flex justify-between items-center bg-slate-700 p-3 rounded-lg border-2 border-slate-900"><span>Año Chino:</span> <span className="font-black text-xl">{astro.chineseEmoji} {astro.chinese}</span></div>
-                                    <div className="flex justify-between items-center bg-slate-700 p-3 rounded-lg border-2 border-slate-900"><span>Luna:</span> <span className="font-black text-xl">{astro.moon}</span></div>
-                                </div>
-                            </div>
-                            <div className={`${cardStyle} bg-[#fffbeb]`}>
-                                <h3 className="text-xl font-black mb-4 flex items-center gap-2"><i className="fas fa-book-open"></i> Diario de Shifts</h3>
-                                <textarea className="w-full p-3 border-4 border-gray-900 rounded-xl mb-3 h-24 font-medium resize-none" placeholder="Registra tus experiencias..." value={journalText} onChange={e=>setJournalText(e.target.value)}></textarea>
-                                <button onClick={addJournal} className={`${btnStyle} bg-amber-300 w-full py-2 text-sm`}>Guardar</button>
-                            </div>
-                        </div>
-
-                        <div className={`lg:col-span-2 ${cardStyle} bg-white flex flex-col items-center`}>
-                            <h3 className="text-3xl font-black mb-6 w-full text-left">Tu Carta de Identidad</h3>
-                            {user.theriotype ? (
-                                <div className="w-full max-w-md animate-bounce-in">
-                                    <div className={`aspect-[3/4] rounded-3xl border-8 ${user.theriotype.border} bg-gradient-to-br ${user.theriotype.color} p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col justify-between`}>
-                                        <div className={`flex justify-between items-start border-b-4 ${user.theriotype.border} pb-4 mb-4 relative z-10`}>
-                                            <div><h4 className={`text-3xl md:text-4xl font-black ${user.theriotype.text}`}>{user.theriotype.name}</h4><p className={`text-sm font-bold uppercase tracking-widest ${user.theriotype.text} opacity-80`}>Therian Class</p></div>
-                                            <div className="bg-white p-2 rounded-full border-4 border-inherit"><span className="text-3xl leading-none">{astro.zodiacEmoji}</span></div>
-                                        </div>
-                                        
-                                        <div className={`flex-grow bg-white border-4 ${user.theriotype.border} rounded-2xl flex items-center justify-center relative z-10 mb-4 overflow-hidden bg-gray-200`}>
-                                            <img 
-                                                src={`https://placehold.co/400x400/transparent/333?font=montserrat&text=[Foto+Profesional+de+${user.theriotype.imgTheme}]`} 
-                                                alt={user.theriotype.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-
-                                        <div className={`bg-white/90 border-4 ${user.theriotype.border} rounded-xl p-4 relative z-10`}>
-                                            <p className="font-bold text-gray-800 text-sm mb-3 italic">"{user.theriotype.desc}"</p>
-                                            <div className="space-y-1 text-xs font-black text-gray-900 uppercase">
-                                                <div className="flex justify-between"><span>Agilidad</span> <span>{user.theriotype.stats.agilidad} / 100</span></div>
-                                                <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full" style={{width: `${user.theriotype.stats.agilidad}%`}}></div></div>
-                                                <div className="flex justify-between pt-1"><span>Fuerza</span> <span>{user.theriotype.stats.fuerza} / 100</span></div>
-                                                <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden"><div className="bg-red-500 h-full" style={{width: `${user.theriotype.stats.fuerza}%`}}></div></div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-3 mt-6">
-                                        <button onClick={() => alert('Para que la descarga funcione al 100%, copiaremos el link abajo para que se lo pases a tus amigos.')} className={`${btnStyle} bg-emerald-400 text-gray-900 text-sm py-3`}>
-                                            <i className="fas fa-download"></i> Guardar Imagen
-                                        </button>
-                                        <div className="flex gap-2">
-                                            <button onClick={()=>shareToSocials('whatsapp')} className={`${btnStyle} bg-green-200 flex-1 text-sm py-2`}><i className="fab fa-whatsapp"></i> WhatsApp</button>
-                                            <button onClick={()=>shareToSocials('twitter')} className={`${btnStyle} bg-blue-200 flex-1 text-sm py-2`}><i className="fab fa-twitter"></i> Twitter</button>
-                                        </div>
-                                        <button onClick={()=>setView('quiz')} className="font-bold text-gray-500 hover:underline mt-2">Rehacer Test</button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-gray-50 border-4 border-dashed border-gray-300 rounded-3xl">
-                                    <h4 className="text-2xl font-black text-gray-500 mb-2">Carta Bloqueada</h4>
-                                    <p className="text-gray-400 font-bold mb-6">Completa el test para generar tu carta.</p>
-                                    <button onClick={() => setView('quiz')} className={`${btnStyle} bg-purple-400 text-white text-xl`}>Iniciar Test</button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function QuizView({ onFinish, cardStyle, btnStyle }) {
-            const [step, setStep] = useState(0);
-            const questions = [
-                { q: "Pregunta 1/5: ¿Qué entorno te transmite paz absoluta?", options: [{ text: "Bosques y nieve", val: 'lobo_artico' }, { text: "Calles o tejados", val: 'gato_callejero' }, { text: "El océano profundo", val: 'tiburon_blanco' }, { text: "Cielos y alturas", val: 'cuervo' }] },
-                { q: "Pregunta 2/5: Ante una amenaza, ¿qué haces instintivamente?", options: [{ text: "Muestro mis dientes y ataco", val: 'lobo_negro' }, { text: "Me erizo y escapo rápido", val: 'gato_callejero' }, { text: "Huyo a una inmensidad segura", val: 'tiburon_blanco' }, { text: "Observo desde arriba", val: 'cuervo' }] },
-                { q: "Pregunta 3/5: Sobre la soledad...", options: [{ text: "Necesito a mi manada siempre", val: 'lobo_gris' }, { text: "Soy 100% independiente", val: 'pantera' }, { text: "Disfruto según mi humor", val: 'zorro_rojo' }, { text: "Observo a la sociedad de lejos", val: 'cuervo' }] },
-                { q: "Pregunta 4/5: Si pudieras cazar, ¿cómo lo harías?", options: [{ text: "Persecución pura y fuerza", val: 'lobo_artico' }, { text: "Sigilo y salto mortal", val: 'pantera' }, { text: "Ataque rápido y sorpresa", val: 'zorro_rojo' }, { text: "Inteligencia y oportunidad", val: 'cuervo' }] },
-                { q: "Pregunta 5/5: Elige una palabra clave:", options: [{ text: "Lealtad (Canino)", val: 'lobo_gris' }, { text: "Misterio (Felino)", val: 'pantera' }, { text: "Fluidez (Acuático)", val: 'tiburon_blanco' }, { text: "Astucia (Zorro)", val: 'zorro_rojo' }] }
-            ];
-
-            return (
-                <div className="max-w-2xl mx-auto py-12 animate-fade-in">
-                    <div className={cardStyle}>
-                        <h3 className="text-3xl font-black mb-8 leading-tight">{questions[step].q}</h3>
-                        <div className="space-y-4">
-                            {questions[step].options.map((o, i) => (
-                                <button key={i} onClick={()=> step === questions.length - 1 ? onFinish(o.val) : setStep(step + 1)} className="w-full text-left p-5 border-4 border-gray-900 rounded-xl font-bold text-xl hover:bg-purple-50 hover:-translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer">
-                                    {o.text}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function ChatbotView({ user, cardStyle, btnStyle }) {
-            const [messages, setMessages] = useState([{ sender: 'model', text: 'Soy el Oráculo. Pregúntame sobre theriotipos, instintos o meditación.' }]);
-            const [input, setInput] = useState('');
-            const chatRef = useRef(null);
-
-            useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [messages]);
-
-            const handleSend = () => {
-                if(!input.trim()) return;
-                const newMsg = { sender: 'user', text: input };
-                const updatedHistory = [...messages, newMsg];
-                setMessages(updatedHistory); setInput(''); 
                 
-                // Bot simulado seguro para GitHub Pages/Vercel (Sin exponer API keys)
-                setTimeout(() => {
-                    const lower = input.toLowerCase();
-                    let botReplyText = "Las energías están densas hoy. ¿Puedes repetirlo conectando con tu instinto?";
-                    if (lower.includes('hola') || lower.includes('hey')) botReplyText = "Saludos, alma libre. ¿Qué inquietudes trae tu espíritu hoy?";
-                    else if (lower.includes('shift') || lower.includes('phantom')) botReplyText = "Los 'shifts' son momentos donde tu lado no-humano se manifiesta. Es completamente natural. Respira y acéptalo.";
-                    else if (lower.includes('lobo') || lower.includes('perro')) botReplyText = "La energía canina habla de manada, lealtad y conexión profunda. ¿Sientes la necesidad de correr libre?";
-                    else if (lower.includes('gato') || lower.includes('felino')) botReplyText = "Los felinos caminan entre dimensiones. Su energía es independiente, ágil y observadora.";
-                    else if (lower.includes('solo') || lower.includes('rara')) botReplyText = "No estás solo. Tu identidad es una conexión espiritual válida con la naturaleza. No dejes que apaguen tu instinto.";
-                    
-                    setMessages([...updatedHistory, { sender: 'model', text: botReplyText }]);
-                }, 800);
-            };
-
-            return (
-                <div className="max-w-3xl mx-auto animate-fade-in">
-                    <div className={`${cardStyle} bg-white flex flex-col h-[75vh] p-4 md:p-6`}>
-                        <div className="flex items-center gap-4 border-b-4 border-gray-900 pb-4 mb-4">
-                            <div className="bg-purple-600 p-3 rounded-full border-4 border-gray-900"><i className="fas fa-comment-dots text-white text-xl"></i></div>
-                            <div><h2 className="text-2xl font-black">El Oráculo</h2></div>
-                        </div>
-                        <div ref={chatRef} className="flex-grow overflow-y-auto space-y-4 p-2 mb-4">
-                            {messages.map((m, i) => (
-                                <div key={i} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-4 rounded-2xl border-4 border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold text-lg whitespace-pre-wrap ${m.sender === 'user' ? 'bg-emerald-200 rounded-tr-none' : 'bg-purple-100 rounded-tl-none'}`}>{m.text}</div></div>
-                            ))}
-                        </div>
-                        <div className="flex gap-3">
-                            <input type="text" className="flex-grow p-4 border-4 border-gray-900 rounded-xl font-bold text-lg focus:outline-none focus:bg-purple-50" placeholder="Pregunta lo que sea..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSend()}/>
-                            <button onClick={handleSend} className={`${btnStyle} bg-purple-500 text-white px-4`}><i className="fas fa-paper-plane"></i></button>
-                        </div>
-                    </div>
+                {/* IMAGEN REAL PROFESIONAL */}
+                <div className={`flex-grow bg-white border-4 ${user.theriotype.border} rounded-2xl flex items-center justify-center relative z-10 mb-4 overflow-hidden`}>
+                  <img 
+                    src={user.theriotype.image} 
+                    alt={user.theriotype.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = `https://placehold.co/400x400/transparent/333?font=montserrat&text=Falta+Imagen`; }}
+                  />
                 </div>
-            );
-        }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                <div className={`bg-white/90 border-4 ${user.theriotype.border} rounded-xl p-4 relative z-10`}>
+                  <p className="font-bold text-gray-800 text-sm mb-3 italic">"{user.theriotype.desc}"</p>
+                  <div className="space-y-1 text-xs font-black text-gray-900 uppercase">
+                    <div className="flex justify-between"><span>Agilidad</span> <span>{user.theriotype.stats.agilidad} / 100</span></div>
+                    <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full" style={{width: `${user.theriotype.stats.agilidad}%`}}></div></div>
+                    <div className="flex justify-between pt-1"><span>Fuerza</span> <span>{user.theriotype.stats.fuerza} / 100</span></div>
+                    <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden"><div className="bg-red-500 h-full" style={{width: `${user.theriotype.stats.fuerza}%`}}></div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Controles Sociales */}
+              <div className="flex flex-col gap-3 mt-6">
+                <button onClick={() => showToast('Usa captura de pantalla por ahora para guardar tu carta perfecta en tu galería.')} className={`${btnStyle} bg-emerald-400 text-gray-900 text-sm py-3`}>
+                  <Download size={20}/> Guardar Imagen en Galería
+                </button>
+                <div className="flex gap-2">
+                   <button onClick={shareNative} className={`${btnStyle} bg-purple-200 flex-1 text-sm py-2`}><Share2 size={18}/> Compartir</button>
+                   <button onClick={()=>shareToSocials('whatsapp')} className={`${btnStyle} bg-green-200 flex-1 text-sm py-2`}>WhatsApp</button>
+                   <button onClick={()=>shareToSocials('twitter')} className={`${btnStyle} bg-blue-200 flex-1 text-sm py-2`}>Twitter (X)</button>
+                </div>
+                <button onClick={()=>setView('quiz')} className="font-bold text-gray-500 hover:underline mt-2">Rehacer Test</button>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-gray-50 border-4 border-dashed border-gray-300 rounded-3xl">
+              <PawPrint size={64} className="text-gray-300 mb-4" />
+              <h4 className="text-2xl font-black text-gray-500 mb-2">Carta Bloqueada</h4>
+              <p className="text-gray-400 font-bold mb-6">Completa el test para generar tu carta.</p>
+              <button onClick={() => setView('quiz')} className={`${btnStyle} bg-purple-400 text-white text-xl`}>Iniciar Test</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuizView({ onFinish, cardStyle, btnStyle }) {
+  const [step, setStep] = useState(0);
+  const questions = [
+    { q: "Pregunta 1/5: ¿Qué entorno te transmite paz absoluta?", options: [{ text: "Bosques y nieve", val: 'lobo_artico' }, { text: "Calles o tejados", val: 'gato_callejero' }, { text: "El océano profundo", val: 'tiburon_blanco' }, { text: "Cielos y alturas", val: 'cuervo' }] },
+    { q: "Pregunta 2/5: Ante una amenaza, ¿qué haces instintivamente?", options: [{ text: "Ataco de frente", val: 'lobo_negro' }, { text: "Me erizo y escapo rápido", val: 'gato_callejero' }, { text: "Huyo a una inmensidad segura", val: 'tiburon_blanco' }, { text: "Observo desde arriba", val: 'cuervo' }] },
+    { q: "Pregunta 3/5: Sobre la soledad...", options: [{ text: "Necesito a mi manada siempre", val: 'lobo_gris' }, { text: "Soy 100% independiente", val: 'pantera' }, { text: "Disfruto según mi humor", val: 'zorro_rojo' }, { text: "Observo a la sociedad de lejos", val: 'cuervo' }] },
+    { q: "Pregunta 4/5: Si pudieras cazar, ¿cómo lo harías?", options: [{ text: "Persecución pura y fuerza", val: 'lobo_artico' }, { text: "Sigilo y salto mortal", val: 'pantera' }, { text: "Ataque rápido y sorpresa", val: 'zorro_rojo' }, { text: "Inteligencia y oportunidad", val: 'cuervo' }] },
+    { q: "Pregunta 5/5: Elige una palabra clave:", options: [{ text: "Lealtad", val: 'lobo_gris' }, { text: "Misterio", val: 'pantera' }, { text: "Fluidez", val: 'tiburon_blanco' }, { text: "Astucia", val: 'zorro_rojo' }] }
+  ];
+
+  return (
+    <div className="max-w-2xl mx-auto py-12 animate-fade-in">
+      <div className={cardStyle}>
+        <h3 className="text-3xl font-black mb-8 leading-tight">{questions[step].q}</h3>
+        <div className="space-y-4">
+          {questions[step].options.map((o, i) => (
+            <button key={i} onClick={()=> step === questions.length - 1 ? onFinish(o.val) : setStep(step + 1)} className="w-full text-left p-5 border-4 border-gray-900 rounded-xl font-bold text-xl hover:bg-purple-50 hover:-translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+              {o.text}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatbotView({ user, cardStyle, btnStyle }) {
+  const [messages, setMessages] = useState([{ sender: 'model', text: 'Soy el Oráculo. Pregúntame sobre theriotipos, instintos o meditación. Mis respuestas están guiadas por la IA cósmica.' }]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const chatRef = useRef(null);
+
+  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [messages]);
+
+  const fetchOracleResponse = async (chatHistory) => {
+    const apiKey = ""; 
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    const contents = chatHistory.map(msg => ({ role: msg.sender === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] }));
+    const systemPrompt = "Eres el Oráculo del Santuario Therian. Guía compasivo. Tono poético y misterioso. Mantén respuestas de 2 frases. No des consejos médicos.";
+
+    let retries = 5;
+    let delay = 1000;
+    while(retries > 0) {
+      try {
+        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents, systemInstruction: { parts: [{ text: systemPrompt }] } }) });
+        const data = await response.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "Las energías están densas hoy. Mi visión está borrosa.";
+      } catch (e) {
+        retries--;
+        if (retries === 0) return "Siento una interferencia mística en la red. Inténtalo más tarde.";
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2;
+      }
+    }
+  };
+
+  const handleSend = async () => {
+    if(!input.trim() || isLoading) return;
+    const newMsg = { sender: 'user', text: input };
+    const updatedHistory = [...messages, newMsg];
+    setMessages(updatedHistory); setInput(''); setIsLoading(true);
+    const botReplyText = await fetchOracleResponse(updatedHistory);
+    setMessages([...updatedHistory, { sender: 'model', text: botReplyText }]);
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto animate-fade-in">
+      <div className={`${cardStyle} bg-white flex flex-col h-[75vh] p-4 md:p-6`}>
+        <div className="flex items-center gap-4 border-b-4 border-gray-900 pb-4 mb-4">
+          <div className="bg-purple-600 p-3 rounded-full border-4 border-gray-900"><MessageCircle className="text-white"/></div>
+          <div><h2 className="text-2xl font-black">El Oráculo</h2></div>
+        </div>
+        <div ref={chatRef} className="flex-grow overflow-y-auto space-y-4 p-2 mb-4">
+          {messages.map((m, i) => (
+             <div key={i} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-4 rounded-2xl border-4 border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold text-lg whitespace-pre-wrap ${m.sender === 'user' ? 'bg-emerald-200 rounded-tr-none' : 'bg-purple-100 rounded-tl-none'}`}>{m.text}</div></div>
+          ))}
+          {isLoading && <div className="flex justify-start"><div className="bg-purple-100 p-4 rounded-2xl border-4 border-gray-900 font-bold text-lg rounded-tl-none animate-pulse">Consultando astros...</div></div>}
+        </div>
+        <div className="flex gap-3">
+          <input type="text" disabled={isLoading} className="flex-grow p-4 border-4 border-gray-900 rounded-xl font-bold text-lg focus:outline-none focus:bg-purple-50" placeholder="Pregunta lo que sea..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSend()}/>
+          <button onClick={handleSend} disabled={isLoading} className={`${btnStyle} bg-purple-500 text-white px-4`}><Send/></button>
+        </div>
+      </div>
+    </div>
+  );
+}
