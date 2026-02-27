@@ -1,44 +1,23 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta name="google-site-verification" content="LOb6RsxpS49HPYF-Phg4VNlDfSZVxl5gATdbA9d8G8Q" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Therian | Descubre tu Theriotipo y Alma Animal | Santuario Therian</title>
     
-    <!-- Etiquetas SEO para Google Optimizadas -->
-    <meta name="description" content="Haz el mejor test therian en español. Descubre tu theriotipo exacto (lobo, zorro, pantera, etc.), genera tu carta de identidad animal alterhuman, aprende sobre quadrobics y habla con el Oráculo. Únete a la comunidad therian.">
-    <meta name="keywords" content="test therian, therian, moda therian, theriotipo, alterhuman, test de animal, que therian soy, therianthropy, lobo therian, zorro therian, otherkin, kintype, comunidad therian, despertar therian, espiritualidad animal, quadrobics, quads, therian gear, mascaras therian, oraculo therian, test alterhuman, soy un therian, animales espirituales">
+    <!-- Etiquetas SEO para Google -->
+    <meta name="description" content="Haz el mejor test therian en español. Descubre tu theriotipo exacto (lobo, zorro, pantera, etc.), genera tu carta de identidad animal alterhuman, aprende sobre quadrobics y habla con el Oráculo.">
+    <meta name="keywords" content="test therian, therian, moda therian, theriotipo, alterhuman, test de animal, que therian soy, therianthropy, lobo therian, zorro therian, otherkin, kintype, comunidad therian">
     <meta name="author" content="Santuario Therian">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-    
-    <!-- Datos Estructurados (Código oculto avanzado para Google) -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Santuario Therian",
-      "url": "https://santuariotherian.vercel.app",
-      "description": "Aplicación web para descubrir tu theriotipo y conectar con tu alma animal. Incluye test de personalidad therian, oráculo de IA y generador de cartas de identidad alterhuman.",
-      "applicationCategory": "LifestyleApplication",
-      "keywords": "therian, theriotipo, test therian, alterhuman, otherkin, lobo, zorro, espiritualidad"
-    }
-    </script>
-
-    <!-- Etiquetas para que se vea bonito al compartir en WhatsApp, Twitter, etc. -->
-    <meta property="og:title" content="Santuario Therian | Descubre tu Alma Animal">
-    <meta property="og:description" content="¿Eres un lobo, un gato callejero o un cuervo? Haz el test y descubre tu theriotipo.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://santuariotherian.vercel.app">
-    <!-- Opcional: añade el link a una imagen tuya para que salga al compartir -->
-    <meta property="og:image" content="https://images.unsplash.com/photo-1580227187123-56aa76d49938?w=800&q=80">
+    <meta name="robots" content="index, follow">
+    <meta name="google-site-verification" content="L0b6RsxpS49HPYF-Phg4VNlDfSZVx15gATdbA9d8G8Q" />
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel para compilar JSX -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- FontAwesome para Iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -65,15 +44,16 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // AQUI ESTÁN TUS FOTOS CONECTADAS CON SUS NOMBRES EXACTOS
         const theriotypesDB = {
-            lobo_artico: { name: 'Lobo Ártico', image: 'https://images.unsplash.com/photo-1580227187123-56aa76d49938?w=800&q=80', desc: 'Resistente y ferozmente leal. Tu alma pertenece a las nieves eternas.', stats: { agilidad: 80, fuerza: 85, misticismo: 70 }, color: 'from-blue-100 to-blue-300', text: 'text-blue-900', border: 'border-blue-500' },
-            lobo_negro: { name: 'Lobo Negro', image: 'https://images.unsplash.com/photo-1605051923053-f72535099e4b?w=800&q=80', desc: 'Misterioso, nocturno y profundamente intuitivo. Te guía la luna.', stats: { agilidad: 75, fuerza: 90, misticismo: 95 }, color: 'from-slate-700 to-slate-900', text: 'text-slate-100', border: 'border-slate-500' },
-            lobo_gris: { name: 'Lobo Gris', image: 'https://images.unsplash.com/photo-1590513904975-f9380da1262d?w=800&q=80', desc: 'El alma de la manada. Eres protector, comunicativo y salvaje.', stats: { agilidad: 80, fuerza: 80, misticismo: 60 }, color: 'from-stone-300 to-stone-500', text: 'text-stone-900', border: 'border-stone-600' },
-            zorro_rojo: { name: 'Zorro Rojo', image: 'https://images.unsplash.com/photo-1516934824040-9759eb54bc7b?w=800&q=80', desc: 'Astuto, juguetón y adaptable. Encuentras magia en lugares ocultos.', stats: { agilidad: 95, fuerza: 40, misticismo: 85 }, color: 'from-orange-300 to-red-400', text: 'text-red-950', border: 'border-red-600' },
-            gato_callejero: { name: 'Gato Urbano', image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&q=80', desc: 'Independiente, territorial y superviviente nato.', stats: { agilidad: 90, fuerza: 45, misticismo: 50 }, color: 'from-gray-300 to-gray-500', text: 'text-gray-900', border: 'border-gray-600' },
-            pantera: { name: 'Pantera Negra', image: 'https://images.unsplash.com/photo-1616035252875-103328ce7dcc?w=800&q=80', desc: 'Sigiloso, poderoso e independiente. Te mueves en las sombras.', stats: { agilidad: 90, fuerza: 85, misticismo: 80 }, color: 'from-violet-900 to-black', text: 'text-violet-100', border: 'border-violet-500' },
-            tiburon_blanco: { name: 'Tiburón Blanco', image: 'https://images.unsplash.com/photo-1560275619-4662e36fa65c?w=800&q=80', desc: 'Poderoso, incomprendido y en constante movimiento.', stats: { agilidad: 85, fuerza: 95, misticismo: 40 }, color: 'from-cyan-300 to-blue-500', text: 'text-cyan-950', border: 'border-cyan-600' },
-            cuervo: { name: 'Cuervo', image: 'https://images.unsplash.com/photo-1506540306786-81534431e7f6?w=800&q=80', desc: 'Sumamente inteligente, coleccionista y con conexión al misticismo.', stats: { agilidad: 85, fuerza: 30, misticismo: 100 }, color: 'from-fuchsia-900 to-slate-900', text: 'text-fuchsia-100', border: 'border-fuchsia-500' }
+            lobo_artico: { name: 'Lobo Ártico', image: './lobo-artico_842_0_orig.jpg', desc: 'Resistente y ferozmente leal. Tu alma pertenece a las nieves eternas.', stats: { agilidad: 80, fuerza: 85, misticismo: 70 }, color: 'from-blue-100 to-blue-300', text: 'text-blue-900', border: 'border-blue-500' },
+            lobo_negro: { name: 'Lobo Negro', image: './lobo negro.jpg', desc: 'Misterioso, nocturno y profundamente intuitivo. Te guía la luna.', stats: { agilidad: 75, fuerza: 90, misticismo: 95 }, color: 'from-slate-700 to-slate-900', text: 'text-slate-100', border: 'border-slate-500' },
+            lobo_gris: { name: 'Lobo Gris', image: './lobo blanco.jpg', desc: 'El alma de la manada. Eres protector, comunicativo y salvaje.', stats: { agilidad: 80, fuerza: 80, misticismo: 60 }, color: 'from-stone-300 to-stone-500', text: 'text-stone-900', border: 'border-stone-600' },
+            zorro_rojo: { name: 'Zorro Rojo', image: './zorro rojo.jpg', desc: 'Astuto, juguetón y adaptable. Encuentras magia en lugares ocultos.', stats: { agilidad: 95, fuerza: 40, misticismo: 85 }, color: 'from-orange-300 to-red-400', text: 'text-red-950', border: 'border-red-600' },
+            gato_callejero: { name: 'Gato Urbano', image: './GATO_URBANO.jpg', desc: 'Independiente, territorial y superviviente nato.', stats: { agilidad: 90, fuerza: 45, misticismo: 50 }, color: 'from-gray-300 to-gray-500', text: 'text-gray-900', border: 'border-gray-600' },
+            pantera: { name: 'Pantera Negra', image: './pantera.jpg', desc: 'Sigiloso, poderoso e independiente. Te mueves en las sombras.', stats: { agilidad: 90, fuerza: 85, misticismo: 80 }, color: 'from-violet-900 to-black', text: 'text-violet-100', border: 'border-violet-500' },
+            tiburon_blanco: { name: 'Tiburón Blanco', image: './Great_white_shark_south_africa.jpg', desc: 'Poderoso, incomprendido y en constante movimiento.', stats: { agilidad: 85, fuerza: 95, misticismo: 40 }, color: 'from-cyan-300 to-blue-500', text: 'text-cyan-950', border: 'border-cyan-600' },
+            cuervo: { name: 'Cuervo', image: './cuervo.jpg', desc: 'Sumamente inteligente, coleccionista y con conexión al misticismo.', stats: { agilidad: 85, fuerza: 30, misticismo: 100 }, color: 'from-fuchsia-900 to-slate-900', text: 'text-fuchsia-100', border: 'border-fuchsia-500' }
         };
 
         const getAstrologyData = (dateString) => {
@@ -235,7 +215,6 @@
             const [text, setText] = useState('');
             const [isDownloading, setIsDownloading] = useState(false);
 
-            // Actualiza también la base de datos general de usuarios cuando se guarda algo
             const updateAndSaveUser = (updatedUser) => {
                 saveUser(updatedUser);
                 const currentDB = JSON.parse(localStorage.getItem('santuario_users_db') || '[]');
@@ -271,10 +250,10 @@
                             url: window.location.href,
                         });
                     } catch (err) {
-                        console.log("Compartir cancelado o error", err);
+                        console.log("Compartir cancelado");
                     }
                 } else {
-                    showToast("Tu navegador no soporta el botón de compartir directo.");
+                    showToast("Tu navegador no soporta compartir directo.");
                 }
             };
 
@@ -286,7 +265,6 @@
                 showToast("Generando carta...");
 
                 try {
-                    // Usamos html2canvas global (cargado en el head)
                     const canvas = await window.html2canvas(element, {
                         useCORS: true,
                         scale: 2,
@@ -300,7 +278,7 @@
                     link.click();
                 } catch (error) {
                     console.error(error);
-                    showToast("Error al descargar. Haz captura de pantalla manual por ahora.");
+                    showToast("Error. Haz captura de pantalla por ahora.");
                 } finally {
                     setIsDownloading(false);
                 }
